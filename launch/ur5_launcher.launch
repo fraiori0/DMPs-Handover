@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="debug" default="false" doc="Debug flag that will get passed on to ur_common.launch"/>
+  <arg name="robot_ip" doc="IP address by which the robot can be reached."/>
+  <arg name="reverse_port" default="50001" doc="Port that will be opened by the driver to allow direct communication between the driver and the robot controller."/>
+  <arg name="script_sender_port" default="50002" doc="The driver will offer an interface to receive the program's URScript on this port. If the robot cannot connect to this port, `External Control` will stop immediately."/>
+  <arg name="tf_prefix" default="" doc="tf_prefix used for the robot."/>
+  <!-- Include here the name of the controllers to be launched.
+  They should be defined inside "$(find ur_robot_driver)/config/ur5_controllers.yaml" -->
+  <!-- <arg name="controllers" default="joint_state_controller scaled_pos_joint_traj_controller speed_scaling_state_controller force_torque_sensor_controller" doc="Controllers that are activated by default."/> -->
+  <!-- my_cartesian_vforce_controller my_cartesian_motion_controller my_cartesian_eik_controller-->
+  <arg name="controllers" default="joint_state_controller my_cartesian_eik_controller speed_scaling_state_controller force_torque_sensor_controller" doc="Controllers that are activated by default."/>
+  <arg name="stopped_controllers" default="pos_joint_traj_controller joint_group_vel_controller" doc="Controllers that are initally loaded, but not started."/>
+  <arg name="controller_config_file" default="$(find ur_robot_driver)/config/ur5_controllers.yaml" doc="Config file used for defining the ROS-Control controllers."/>
+  <arg name="robot_description_file" default="$(find ur_description)/launch/ur5_upload.launch" doc="Robot description launch file."/>
+  <arg name="kinematics_config" default="$(find ur_description)/config/ur5_default.yaml" doc="Kinematics config file used for calibration correction. This will be used to verify the robot's calibration is matching the robot_description."/>
+  <arg name="limited" default="false" doc="Use the description in limited mode (Every axis rotates from -PI to PI)"/>
+  <arg name="headless_mode" default="false" doc="Automatically send URScript to robot to execute. On e-Series this does require the robot to be in 'remote-control' mode. With this, the URCap is not needed on the robot."/>
+    
+  <arg name="connect_azzurra" default="false" doc="Decide whether to launch also the Azzurra hand control node"/>
+  <!-- =============================================================================== -->
+
+  <!-- Start URDriver node -->
+  <include file="$(find ur_robot_driver)/launch/ur5_bringup.launch" pass_all_args="true"/>
+
+  <!-- Start OptoForce node -->
+  <include file="$(find optoforce_etherdaq_driver)/launch/my_launcher.launch">
+    <arg name="filter" value="3" />
+  </include>
+
+  <!-- Start Azzurra hand control node -->
+  <group if="$(arg connect_azzurra)">
+    <include file="$(find ih2_azzurra)/launch/ih2_azzurra.launch"/>
+  </group>
+
+  <node name="DMP_controller" pkg="ur5_control" type="DMP_controller.py" respawn="false" output="screen" >
+    <param name="hz" type="double" value="100.0"/>
+  </node>
+
+  <node name="Human_watcher" pkg="ur5_control" type="Human_watcher.py" respawn="false" output="screen" >
+    <param name="hz" type="double" value="100.0"/>
+  </node>
+
+  <node name="Release_Controller" pkg="ur5_control" type="Release_Controller.py" respawn="false" output="screen" >
+    <param name="hz" type="double" value="100.0"/>
+  </node>
+  
+
+</launch>
